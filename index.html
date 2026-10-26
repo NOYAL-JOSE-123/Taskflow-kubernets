@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>TaskFlow — Task Manager</title>
+<style>
+:root{--bg:#0b1220;--panel:#121d30;--panel2:#18263c;--text:#eef4ff;--muted:#9eacc4;--green:#48d6a0;--line:#283852;--red:#ff7185}
+*{box-sizing:border-box}body{margin:0;font-family:Inter,Segoe UI,Arial,sans-serif;background:radial-gradient(circle at top right,#16334a 0,transparent 38%),var(--bg);color:var(--text);min-height:100vh}
+.wrap{max-width:1000px;margin:auto;padding:36px 20px}.top{display:flex;justify-content:space-between;align-items:center;gap:20px;flex-wrap:wrap}
+.brand{display:flex;gap:12px;align-items:center}.logo{width:46px;height:46px;border-radius:14px;background:var(--green);color:#062019;display:grid;place-items:center;font-size:25px;font-weight:900}
+h1{font-size:27px;margin:0} .sub{color:var(--muted);margin:6px 0 0;font-size:14px}.pill{border:1px solid #2e5c54;color:var(--green);padding:8px 12px;border-radius:999px;font-size:12px}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin:30px 0}.stat,.panel{background:rgba(18,29,48,.92);border:1px solid var(--line);border-radius:18px;padding:20px}.stat small{color:var(--muted)}.num{font-size:28px;font-weight:750;margin-top:8px}
+.layout{display:grid;grid-template-columns:320px 1fr;gap:18px}.panel h2{font-size:17px;margin:0 0 16px}.field{width:100%;padding:12px 13px;border-radius:10px;border:1px solid var(--line);background:#0d1728;color:var(--text);outline:none;margin-bottom:10px}.field:focus{border-color:var(--green)}
+button{cursor:pointer;border:0;border-radius:10px;padding:11px 14px;font-weight:700}.primary{background:var(--green);color:#062019;width:100%}.filters{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}.filter{background:var(--panel2);color:var(--muted);border:1px solid var(--line)}.filter.active{color:var(--green);border-color:var(--green)}
+.task{display:flex;align-items:flex-start;gap:12px;padding:15px 0;border-bottom:1px solid var(--line)}.task:last-child{border-bottom:0}.check{width:19px;height:19px;accent-color:var(--green);margin-top:3px}.taskbody{flex:1;min-width:0}.tasktitle{font-weight:650;overflow-wrap:anywhere}.meta{font-size:12px;color:var(--muted);margin-top:6px}.done .tasktitle{text-decoration:line-through;color:#7f91ac}.delete{background:transparent;color:var(--red);padding:4px 7px;font-size:18px}.empty{text-align:center;color:var(--muted);padding:34px 10px}.footer{text-align:center;color:var(--muted);font-size:12px;margin-top:24px}
+@media(max-width:700px){.layout{grid-template-columns:1fr}.stats{gap:8px}.stat{padding:14px}.num{font-size:23px}.wrap{padding:24px 14px}}
+</style>
+</head>
+<body><main class="wrap">
+<header class="top"><div class="brand"><div class="logo">✓</div><div><h1>TaskFlow</h1><p class="sub">A little progress, every day.</p></div></div><span class="pill">● APP ONLINE</span></header>
+<section class="stats"><div class="stat"><small>Total tasks</small><div class="num" id="total">0</div></div><div class="stat"><small>Completed</small><div class="num" id="completed">0</div></div><div class="stat"><small>Remaining</small><div class="num" id="remaining">0</div></div></section>
+<div class="layout"><section class="panel"><h2>Add a task</h2><form id="taskForm"><input class="field" id="taskTitle" maxlength="100" placeholder="What needs to get done?" required><select class="field" id="priority"><option value="Normal">Normal priority</option><option value="High">High priority</option><option value="Low">Low priority</option></select><input class="field" id="due" type="date"><button class="primary" type="submit">＋ Add task</button></form><p class="sub" style="line-height:1.6;margin-top:16px">Your tasks are saved in this browser using local storage. This demo doesn't require an account or database.</p></section>
+<section class="panel"><h2>Your tasks</h2><div class="filters"><button class="filter active" data-filter="all">All</button><button class="filter" data-filter="open">Active</button><button class="filter" data-filter="done">Completed</button></div><div id="tasks"></div></section></div>
+<p class="footer">TaskFlow • Containerized with Docker • Orchestrated by Kubernetes</p>
+</main>
+<script>
+const $=id=>document.getElementById(id);
+let tasks=JSON.parse(localStorage.getItem('taskflow-tasks')||'[]'),filter='all';
+function save(){localStorage.setItem('taskflow-tasks',JSON.stringify(tasks));render()}
+function render(){
+$('total').textContent=tasks.length;$('completed').textContent=tasks.filter(t=>t.done).length;$('remaining').textContent=tasks.filter(t=>!t.done).length;
+const visible=tasks.filter(t=>filter==='all'||(filter==='open'&&!t.done)||(filter==='done'&&t.done));
+$('tasks').innerHTML=visible.length?visible.map(t=>`<div class="task ${t.done?'done':''}"><input class="check" type="checkbox" ${t.done?'checked':''} aria-label="Complete task" onchange="toggleTask('${t.id}')"><div class="taskbody"><div class="tasktitle">${escapeHtml(t.title)}</div><div class="meta">${t.priority} priority${t.due?' · Due '+t.due:''}</div></div><button class="delete" title="Delete task" onclick="deleteTask('${t.id}')">×</button></div>`).join(''):'<div class="empty">No tasks here yet. Add one to get started ✨</div>';
+}
+function escapeHtml(s){return s.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+$('taskForm').addEventListener('submit',e=>{e.preventDefault();tasks.unshift({id:crypto.randomUUID(),title:$('taskTitle').value.trim(),priority:$('priority').value,due:$('due').value,done:false});$('taskForm').reset();save()});
+function toggleTask(id){tasks=tasks.map(t=>t.id===id?{...t,done:!t.done}:t);save()}
+function deleteTask(id){tasks=tasks.filter(t=>t.id!==id);save()}
+document.querySelectorAll('[data-filter]').forEach(b=>b.addEventListener('click',()=>{filter=b.dataset.filter;document.querySelectorAll('[data-filter]').forEach(x=>x.classList.toggle('active',x===b));render()}));
+render();
+</script></body></html>
